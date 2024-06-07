@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Camera</title>
+</head>
+<body>
+    <h2>Mobile Camera</h2>
+    <button onclick="requestCameraPermission()">Allow Camera Access</button>
+    <video id="video" autoplay playsinline style="display: none;"></video>
+    <script>
+        const video = document.getElementById('video');
+
+        async function requestCameraPermission() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                video.play();
+                startStreaming(stream);
+            } catch (error) {
+                console.error('Error accessing mobile camera:', error);
+            }
+        }
+
+        function startStreaming(stream) {
+            const socket = new WebSocket('ws://192.168.0.102:8080'); // Replace with your Mac's IP address
+
+            socket.onopen = () => {
+                console.log('WebSocket connection established.');
+                const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp8' });
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        socket.send(event.data);
+                    }
+                };
+
+                mediaRecorder.start(100); // Send data in chunks of 100ms
+            };
+
+            socket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+
+            socket.onclose = () => {
+                console.log('WebSocket connection closed.');
+            };
+        }
+    </script>
+</body>
+</html>
